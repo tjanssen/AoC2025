@@ -1,15 +1,18 @@
 (ns main
   (:require [clojure.string :as str]
-            [clojure.test :refer [with-test is run-tests]]))
+            [clojure.test :refer [with-test is run-tests]]
+            [typed.clojure :as t]))
 
 (defn read-file
   [filename]
   (-> (slurp filename)
       (str/split #"\n")))
+(t/ann read-file [t/Str :-> (t/AVec t/Str)])
 
 (defn max-in-char-seq
   [char-seq]
   (apply max (map (comp parse-long str) char-seq)))
+(t/ann max-in-char-seq [(t/NonEmptySeqable Character) :-> Long])
 
 (defn remaining-batteries
   [batteries split-char]
@@ -17,6 +20,7 @@
               (second
                (split-at (str/index-of batteries split-char)
                          batteries)))))
+(t/ann remaining-batteries [t/Str, Character :-> t/Str])
 
 (with-test
   (defn most-joltage
@@ -43,10 +47,12 @@
   (is (= 811111111119 (most-joltage "811111111111119" 12)))
   (is (= 434234234278 (most-joltage "234234234234278" 12)))
   (is (= 888911112111 (most-joltage "818181911112111" 12))))
+(t/ann most-joltage [t/Str, Long :-> (t/Option Long)])
+
 
 
 (->> (read-file "input.txt")
-     (map #(most-joltage % 12))
+     (map (fn [x] (or (most-joltage x 12) 0)))
      (reduce + 0))
 
 
@@ -62,6 +68,13 @@
 
   (split-at 7 "811111151111119")
   (str/index-of "801111151111119" (char (+ 0 (int \0))))
+
+
+  (t/cns)
+
+
+  (parse-long "asd")
+
 
   '())
 
