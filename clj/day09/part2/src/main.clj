@@ -43,110 +43,71 @@
                                 (conj rect-list
                                       [(rect-area (first coords-a) (first coords-b)) (nth coords i) (nth coords j)]))))))))))
 
-(defn between
-  [a b c]
-  (let [[x y] (sort [b c])]
-    (and (>= a x) (<= a y))))
-(t/ann between [t/Int t/Int t/Int :-> t/Bool])
+(with-test
+  (defn points-in-line
+    [[ax ay] [bx by]]
+    (if (= ax bx)
+      (let [min-y (min ay by)
+            max-y (max ay by)]
+        (for [yi (range min-y (inc max-y))]
+          [ax yi]))
+      (let [min-x (min ax bx)
+            max-x (max ax bx)]
+        (for [xi (range min-x (inc max-x))]
+          [xi ay]))))
+  (is (= #{[2 1] [2 2] [2 3] [2 4] [2 5]} (into #{} (points-in-line [2 1] [2 5]))))
+  (is (= #{[1 2] [2 2] [3 2] [4 2] [5 2]} (into #{} (points-in-line [1 2] [5 2]))))
+  (is (= #{[2 1] [2 2] [2 3] [2 4] [2 5]} (into #{} (points-in-line [2 5] [2 1]))))
+  (is (= #{[1 2] [2 2] [3 2] [4 2] [5 2]} (into #{} (points-in-line [5 2] [1 2])))))
+
+(defn points-on-path
+  [point-list]
+  (loop [point-list point-list
+         points #{}]
+    (if (< (count point-list) 2)
+      points
+      (let [point-a (first point-list)
+            point-b (second point-list)]
+        (recur (rest point-list) (into points (points-in-line point-a point-b)))))))
 
 (with-test
-  (defn point-is-on-line
-    [[x y] [[ax ay] [bx by]]]
-    (or
-     (and (= x ax) (between y ay by))
-     (and (= y ay) (between x ax bx))))
-  (is (true? (point-is-on-line [2 5] [[2 4] [2 9]])))
-  (is (false? (point-is-on-line [5 2] [[2 4] [2 9]])))
-  (is (true? (point-is-on-line [2 5] [[2 9] [2 4]])))
-  (is (true? (point-is-on-line [5 2] [[4 2] [9 2]])))
-  (is (false? (point-is-on-line [2 13] [[2 4] [2 9]]))))
+  (defn point-is-in-rect
+    [[min-x max-x min-y max-y] [x y]]
+    (and (> x min-x)
+         (< x max-x)
+         (> y min-y)
+         (< y max-y)))
+  (is (true? (point-is-in-rect [2 8 1 5] [4 2])))
+  (is (true? (point-is-in-rect [2 8 1 5] [3 2])))
+  (is (false? (point-is-in-rect [2 8 1 5] [2 1])))
+  (is (false? (point-is-in-rect [2 8 1 5] [9 4])))
+  (is (false? (point-is-in-rect [2 8 1 1] [4 1]))))
 
-(with-test
-  (defn point-is-in-path
-    [[x y] point-list]
-    (odd? (loop [point-list    point-list
-                 intersections 0]
-            (if (< (count point-list) 2)
-              intersections
-              (let [[ax ay] (first point-list)
-                    [bx by] (second point-list)]
-                (if (point-is-on-line [x y] [[ax ay] [bx by]])
-                  1
-                  (if (= ay by)
-                    ; line is horizontal (ignore)
-                    (recur (rest point-list) intersections)
-                    (let [[ay by] (sort [ay by])]
-                      (if (and (< x ax) (between y ay (dec by)))
-                        (recur (rest point-list) (inc intersections))
-                        (recur (rest point-list) intersections))))))))))
-  (is (true? (point-is-in-path [7 1] '([7 3] [7 1] [11 1] [11 7] [9 7] [9 5] [2 5] [2 3] [7 3])))) 
-  (is (true? (point-is-in-path [3 5] '([7 3] [7 1] [11 1] [11 7] [9 7] [9 5] [2 5] [2 3] [7 3]))))
-  (is (true? (point-is-in-path [2 5] '([7 3] [7 1] [11 1] [11 7] [9 7] [9 5] [2 5] [2 3] [7 3]))))
-  (is (true? (point-is-in-path [9 1] '([7 3] [7 1] [11 1] [11 7] [9 7] [9 5] [2 5] [2 3] [7 3]))))
-  (is (true? (point-is-in-path [11 4] '([7 3] [7 1] [11 1] [11 7] [9 7] [9 5] [2 5] [2 3] [7 3]))))
-  (is (true? (point-is-in-path [4 3] '([7 3] [7 1] [11 1] [11 7] [9 7] [9 5] [2 5] [2 3] [7 3]))))
-  (is (false? (point-is-in-path [0 0] '([7 3] [7 1] [11 1] [11 7] [9 7] [9 5] [2 5] [2 3] [7 3]))))
-  (is (false? (point-is-in-path [2 1] '([7 3] [7 1] [11 1] [11 7] [9 7] [9 5] [2 5] [2 3] [7 3]))))
-  (is (false? (point-is-in-path [2 7] '([7 3] [7 1] [11 1] [11 7] [9 7] [9 5] [2 5] [2 3] [7 3])))))
-
-(defn perimeter-of-rect
-  [[ax ay] [bx by]]
-  (let [xrange (range (min ax bx) (inc (max ax bx)))
-        yrange (range (min ay by) (inc (max ay by)))]
-    (->   (into #{} (map (fn [x] [x, ay]) xrange))
-          (into (map (fn [x] [x, by]) xrange))
-          (into (map (fn [y] [ax, y]) yrange))
-          (into (map (fn [y] [bx, y]) yrange)))))
-
-(with-test
-  (defn rect-is-in-path
-    [a b coord-loop]
-    (let [perimeter-coords (sort-by first (perimeter-of-rect a b))] 
-      (loop [perimeter-coords perimeter-coords]
-        (if (seq perimeter-coords)
-          (if (point-is-in-path (first perimeter-coords) coord-loop)
-            (recur (rest perimeter-coords))
-            false)
-          true))))
-  (is (true? (rect-is-in-path  [9 5] [2 3] '([7 3] [7 1] [11 1] [11 7] [9 7] [9 5] [2 5] [2 3] [7 3])))))
 
 (let [coord-list          (->> (read-file "input.txt")
                                (map read-coords))
       coord-loop          (conj coord-list (last coord-list))
+      all-points-on-path  (points-on-path coord-loop)
       rect-list-with-area (->> coord-list
                                (build-rect-list)
                                (sort-by first)
                                (reverse))]
   (loop [rect-list rect-list-with-area]
     (if (seq rect-list)
-      (if (rect-is-in-path  (second (first rect-list)) (nth (first rect-list) 2) coord-loop)
-        (first (first rect-list))
-        (recur (rest rect-list)))
+      (let [[area [ax ay] [bx by]] (first rect-list)]
+        (if (some #(point-is-in-rect [ (min ax bx) (max ax bx) (min ay by) (max ay by) ]%  ) all-points-on-path) 
+          (recur (rest rect-list))
+          area))
       false)))
 
 
-
-
-
-
 (comment
-
-
-  (rect-is-in-path  [9 5] [2 3] '([7 1] [11 1] [11 7] [9 7] [9 5] [2 5] [2 3] [7 3] [7 1]))
-
-
-
-
-  (perimeter-of-rect [2 4] [3 3])
-  (map (fn [x] [x, 3]) '(3 4 5))
-
-
-  (point-is-in-path [2 1] '([7 1] [11 1] [11 7] [9 7] [9 5] [2 5] [2 3] [7 3]))
-
+  
   ;; Test
   (do
     (run-tests)
     (t/cns))
 
-  '())
+  '()
+  )
 
