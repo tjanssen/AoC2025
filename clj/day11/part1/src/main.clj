@@ -24,7 +24,7 @@
         (if (empty? out-links)
           [num-paths (assoc memo node num-paths)]
           (let [[this-num-paths this-memo] (calc-paths link-map (first out-links) memo)]
-            (recur (+ num-paths this-num-paths) (rest out-links) (merge memo this-memo))))))))
+            (recur (+ num-paths this-num-paths) (rest out-links) this-memo)))))))
 
 (let [link-map (->> (read-file "input.txt")
                     (map read-links)
