@@ -22,7 +22,7 @@
              out-links    (link-map node)
              memo         memo]
         (if (empty? out-links)
-          [num-paths memo]
+          [num-paths (assoc memo node num-paths)]
           (let [[this-num-paths this-memo] (calc-paths link-map (first out-links) memo)]
             (recur (+ num-paths this-num-paths) (rest out-links) (merge memo this-memo))))))))
 
