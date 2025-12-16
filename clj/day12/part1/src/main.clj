@@ -29,9 +29,45 @@
         (reduce + 0))
    (* (:length area) (:width area))))
 
-(let [{:keys [shapes areas]} (read-file "input.txt")]
-  (count (->> areas
-              (remove (partial not-enough-space shapes)))))
+(defn more-than-enough-space
+  "true if there are more 3x3 squares in the area than there are presents"
+  [area]
+  (<=
+   (reduce + 0 (:amounts area))
+   (* (quot (:length area) 3) (quot (:width area) 3))))
+
+(let [{:keys [shapes areas]}         (read-file "input.txt")
+      {:keys [fail success unknown]} (loop [areas   areas
+                                            fail    '()
+                                            success '()
+                                            unknown '()]
+                                       (if (seq areas)
+                                         (cond
+                                           (not-enough-space shapes (first areas))
+                                           (recur (rest areas)
+                                                  (conj fail (first areas))
+                                                  success
+                                                  unknown)
+
+                                           (more-than-enough-space (first areas))
+                                           (recur (rest areas)
+                                                  fail
+                                                  (conj success (first areas))
+                                                  unknown)
+
+                                           :else
+                                           (recur (rest areas)
+                                                  fail
+                                                  success
+                                                  (conj unknown (first areas))))
+
+                                         {:fail    fail
+                                          :success success
+                                          :unknown unknown}))]
+
+  (println "fail" (count fail)
+           "success" (count success)
+           "unknown" (count unknown)))
 
 
 
